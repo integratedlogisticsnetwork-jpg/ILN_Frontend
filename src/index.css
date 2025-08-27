@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add this to your index.css or global CSS */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+#google_translate_element span {
+  display: none;
+}
+
+.goog-te-gadget {
+  font-size: 0px !important;
+}
+#google_translate_element select {
+  @apply bg-transparent text-black dark:text-white border border-black dark:border-white px-2 rounded-full py-1 flex flex-row justify-center items-center gap-3 w-[140px] h-full;
+  color-scheme: dark; /* Helps with system dark mode on some browsers */
+}
+
+/* Style dropdown options */
+#google_translate_element select option {
+  background-color: white;
+  color: black;
+}
+
+.writing-vertical {
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+}

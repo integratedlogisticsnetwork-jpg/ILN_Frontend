@@ -1,0 +1,10 @@
+:root {
+  --primary-color: #1b8dc1;
+  --secondary-color: #00051f;
+  --bg-color1: #111a35;
+  --bg-color2: #f9f9f9;
+}
+
+body {
+  font-family: "PT Serif", serif;
+}
