@@ -1,5 +1,5 @@
 import About from "../components/About";
-import Insights from "../components/blog";
+// import Insights from "../components/blog";
 import Footer from "../components/Footer";
 import HeroSection from "../components/Hero";
 import ILNBenefits from "../components/ILNBenefits";
@@ -19,7 +19,7 @@ function Landing() {
       <JoinILN />
       <ILNBenefits />
       {/* <ReviewSection /> */}
-      <Insights />
+      {/* <Insights /> */}
       <Footer />
     </div>
   );
