@@ -196,7 +196,7 @@ export default function Navbar() {
             ...(user
               ? [
                   { label: "Directory", path: "/directory" },
-                  { label: "AGM", path: "/agm" },
+                  // { label: "AGM", path: "/agm" },
                 ]
               : []),
           ].map((link) => (
@@ -358,7 +358,7 @@ export default function Navbar() {
                   "Newsfeed",
                   "Blogs",
                   "Contact",
-                  ...(user ? ["Directory", "AGM", "Profile"] : []), // Conditionally add AGM
+                  ...(user ? ["Directory", "Profile"] : []), // Conditionally add AGM
                 ].map((item) => (
                   <a
                     key={item}
