@@ -48,6 +48,9 @@ export default function AdminPage() {
     "approve" | "reject" | null
   >(null);
 
+  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [showContactModal, setShowContactModal] = useState(false);
+
   const [agms, setAgms] = useState<AgmType[]>([]);
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -185,6 +188,11 @@ export default function AdminPage() {
     } catch (err) {
       console.error("Failed to fetch newsfeed");
     }
+  };
+
+  const handleViewContact = (contact: any) => {
+    setSelectedContact(contact);
+    setShowContactModal(true);
   };
 
   const fetchMembers = async () => {
@@ -1410,6 +1418,7 @@ export default function AdminPage() {
                   ) : (
                     <>
                       {/* Desktop Table View */}
+                      {/* Desktop Table View */}
                       <div className="hidden md:block overflow-auto">
                         <table className="w-full text-left text-sm table-fixed">
                           <thead>
@@ -1432,13 +1441,13 @@ export default function AdminPage() {
                                 <td className="py-2 px-2 truncate">
                                   {contact.message}
                                 </td>
-                                <td className="py-2 px-2 text-center">
-                                  <a
-                                    href={`mailto:${contact.email}`}
+                                <td className="py-2 px-2 text-center space-x-3">
+                                  <button
+                                    onClick={() => handleViewContact(contact)}
                                     className="text-blue-600 hover:text-blue-800"
                                   >
-                                    Send Mail
-                                  </a>
+                                    View
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -1479,6 +1488,50 @@ export default function AdminPage() {
                     </>
                   )}
                 </section>
+              )}
+
+              {showContactModal && selectedContact && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+                    <h3 className="text-xl font-semibold mb-4">
+                      Contact Details
+                    </h3>
+
+                    <div className="space-y-2">
+                      <p>
+                        <strong>Name:</strong> {selectedContact.name}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {selectedContact.email}
+                      </p>
+                      <p>
+                        <strong>Subject:</strong> {selectedContact.subject}
+                      </p>
+                      <p className="whitespace-pre-wrap">
+                        <strong>Message:</strong> {selectedContact.message}
+                      </p>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                      <a
+                        href={`mailto:${selectedContact.email}`}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Send Mail
+                      </a>
+                      <button
+                        onClick={() => setShowContactModal(false)}
+                        className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 dark:bg-neutral-700 dark:text-white"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {activePanel === "Membership Requests" && (
