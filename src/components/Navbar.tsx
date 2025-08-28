@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   FaMapMarkerAlt,
   FaLinkedin,
-  FaInstagram,
   FaEnvelope,
   FaSun,
   FaMoon,
@@ -23,6 +22,13 @@ declare global {
     google: any;
   }
 }
+
+const socials = [
+  {
+    Icon: FaLinkedin,
+    link: "https://www.linkedin.com/company/integrated-logistics-network/", // 🔗 replace with actual LinkedIn URL
+  },
+];
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -111,17 +117,17 @@ export default function Navbar() {
               <LanguageSelector />
             </div>
 
-            <a
+            {/* <a
               href="https://instagram.com/yourprofile"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-pink-500 transition-colors text-xl"
             >
               <FaInstagram />
-            </a>
+            </a> */}
 
             <a
-              href="https://linkedin.com/in/yourprofile"
+              href="https://www.linkedin.com/company/integrated-logistics-network/"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-blue-600 transition-colors text-xl"
@@ -435,11 +441,16 @@ export default function Navbar() {
                     We Are Social:
                   </h3>
                   <div className="flex gap-4 mb-8">
-                    {[FaLinkedin, FaInstagram].map((Icon, idx) => (
-                      <Icon
+                    {socials.map(({ Icon, link }, idx) => (
+                      <a
                         key={idx}
-                        className="dark:text-white text-[var(--primary-color)] text-3xl cursor-pointer dark:hover:text-[var(--primary-color)]"
-                      />
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:opacity-80 transition"
+                      >
+                        <Icon className="dark:text-white text-[var(--primary-color)] text-3xl cursor-pointer dark:hover:text-[var(--primary-color)]" />
+                      </a>
                     ))}
                   </div>
                 </div>

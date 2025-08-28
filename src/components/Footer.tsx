@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import footerBg from "../assets/truck.jpg";
 import logo from "../assets/iln logo (1).png";
-import {
-  FaInstagram,
-  FaLinkedin,
-  FaEnvelope,
-  FaLocationDot,
-} from "react-icons/fa6";
+import { FaLinkedin, FaEnvelope, FaLocationDot } from "react-icons/fa6";
 import { HiPaperAirplane } from "react-icons/hi";
 
 import axios from "axios";
 const baseURL = import.meta.env.VITE_API_BASE_URL;
+
+const socials = [
+  {
+    Icon: FaLinkedin,
+    link: "https://www.linkedin.com/company/integrated-logistics-network/", // 🔗 replace with actual LinkedIn URL
+  },
+];
 
 const Footer: React.FC = () => {
   const [subscriberEmail, setSubscriberEmail] = useState("");
@@ -214,11 +216,16 @@ const Footer: React.FC = () => {
           </a>
 
           <div className="flex gap-4 mb-8">
-            {[FaLinkedin, FaInstagram].map((Icon, idx) => (
-              <Icon
+            {socials.map(({ Icon, link }, idx) => (
+              <a
                 key={idx}
-                className="dark:text-white text-[var(--primary-color)] text-3xl cursor-pointer dark:hover:text-[var(--primary-color)]"
-              />
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition"
+              >
+                <Icon className="dark:text-white text-[var(--primary-color)] text-3xl cursor-pointer dark:hover:text-[var(--primary-color)]" />
+              </a>
             ))}
           </div>
         </div>
