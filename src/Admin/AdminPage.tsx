@@ -1719,7 +1719,7 @@ export default function AdminPage() {
                   role="dialog"
                   aria-modal="true"
                 >
-                  <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-lg w-full max-w-md">
+                  <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-lg w-full max-w-4xl max-h-fit overflow-auto">
                     <h3 className="text-xl font-semibold mb-4">
                       Contact Details
                     </h3>
