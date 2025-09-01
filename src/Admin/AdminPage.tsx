@@ -4,7 +4,7 @@ import axios from "axios";
 // import Navbar from "../components/Navbar";
 import logo from "../assets/ILN Logo v2.png";
 import { exportToExcel } from "../utils/exportToExcel";
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Code, ImageIcon, Trash2 } from "lucide-react";
 import { Edit, Trash } from "lucide-react";
 import AddBlog from "../components/AddBlogs"; // adjust path if needed
 import ReactQuill from "react-quill";
@@ -13,6 +13,8 @@ import "../index.css";
 import AddOffer from "../components/AddOffer";
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 import { useNavigate } from "react-router-dom";
+import Fuse from "fuse.js";
+import { formatHtml } from "../utils/formatHtml";
 
 // import YourOfferModalComponent from "../components/AddOffer"; // adjust path if needed
 
@@ -64,15 +66,43 @@ export default function AdminPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [_loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [blogSearchTerm, setBlogSearchTerm] = useState("");
+  const [blogFilterDate, setBlogFilterDate] = useState("");
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [showHtmlEditor, setShowHtmlEditor] = useState(false);
+  const [htmlContent, setHtmlContent] = useState("");
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
 
   const postsPerPage = 20;
 
+  const fuse = new Fuse(blogs, {
+    keys: ["title", "author"],
+    threshold: 0.4, // Adjust this for more/less fuzzy
+  });
+
+  const filteredFuseResults =
+    blogSearchTerm.trim() === ""
+      ? blogs
+      : fuse.search(blogSearchTerm).map((result: { item: any }) => result.item);
+
+  const filteredBlogs = filteredFuseResults.filter((blog: BlogPost) => {
+    if (!blogFilterDate) return true;
+    const publishedDate = new Date(blog.datePublished)
+      .toISOString()
+      .split("T")[0];
+    return publishedDate === blogFilterDate;
+  });
+
   const indexOfLastPost = currentPage * postsPerPage;
   const indexOfFirstPost = indexOfLastPost - postsPerPage;
-  const currentBlogs = blogs.slice(indexOfFirstPost, indexOfLastPost);
-
-  const totalPages = Math.ceil(blogs.length / postsPerPage);
+  const currentBlogs = filteredBlogs.slice(indexOfFirstPost, indexOfLastPost);
+  const totalPages = Math.ceil(filteredBlogs.length / postsPerPage);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [blogSearchTerm, blogFilterDate]);
 
   const navigate = useNavigate();
 
@@ -372,6 +402,37 @@ export default function AdminPage() {
     }
   };
 
+  const handleUpdateImage = async () => {
+    if (!selectedImage) return;
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append("coverImage", selectedImage);
+
+    try {
+      const res = await fetch(`${baseURL}/api/blogs/${editingSlug}/image`, {
+        method: "PATCH",
+        body: formData,
+        // ❗ Don't set Content-Type manually for FormData, fetch handles it
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update image");
+      }
+
+      alert("Image updated successfully!");
+      setShowImageModal(false);
+      setSelectedImage(null);
+      fetchBlogs(); // Refresh the blog list
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update image");
+    } finally {
+      setLoading(false); // Stop loading
+    }
+  };
+
   const handleModalClose = () => {
     setShowAddModal(false);
     setEditingBlog(null);
@@ -415,6 +476,7 @@ export default function AdminPage() {
           <img src={logo} alt="ILN Logo" className="h-24" draggable="false" />
         </a>
       </nav>
+
       <div className="min-h-screen bg-white dark:bg-black py-6 ">
         <div className="flex flex-col md:flex-row gap-6">
           {/* SIDEBAR (Desktop Only) */}
@@ -973,6 +1035,27 @@ export default function AdminPage() {
                 <section className="bg-gray-100 dark:bg-neutral-900 p-4 md:p-6 rounded shadow mb-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold ">Blogs</h2>
+                    <div className="flex flex-col md:flex-row gap-4 mb-4">
+                      <input
+                        type="text"
+                        placeholder="Search by title, author or content"
+                        value={blogSearchTerm}
+                        onChange={(e) => setBlogSearchTerm(e.target.value)}
+                        className="p-2 border rounded w-full  bg-transparent text-black dark:text-white"
+                      />
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={blogFilterDate}
+                          onChange={(e) => setBlogFilterDate(e.target.value)}
+                          className="p-2 border rounded w-full  text-black bg-transparent dark:text-white"
+                        />
+                        <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-white pointer-events-none">
+                          📅
+                        </span>
+                      </div>
+                    </div>
+
                     <button
                       className="p-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                       onClick={() => {
@@ -1042,6 +1125,26 @@ export default function AdminPage() {
                               >
                                 <Trash2 size={16} />
                               </button>
+                              <button
+                                onClick={async () => {
+                                  const formatted = formatHtml(blog.content);
+                                  setHtmlContent(await formatted);
+                                  setEditingSlug(blog.slug);
+                                  setShowHtmlEditor(true);
+                                }}
+                                className="text-yellow-500 hover:text-yellow-600"
+                              >
+                                <Code size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSlug(blog.slug); // Store slug of the blog to update
+                                  setShowImageModal(true); // Show modal
+                                }}
+                                className="text-purple-600 hover:text-purple-700"
+                              >
+                                <ImageIcon size={16} />
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -1093,6 +1196,25 @@ export default function AdminPage() {
                             className="text-red-600"
                           >
                             <Trash size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setHtmlContent(blog.content);
+                              setEditingSlug(blog.slug);
+                              setShowHtmlEditor(true);
+                            }}
+                            className="text-yellow-500 hover:text-yellow-600"
+                          >
+                            <Code size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingSlug(blog.slug); // Store slug of the blog to update
+                              setShowImageModal(true); // Show modal
+                            }}
+                            className="text-purple-600 hover:text-purple-700"
+                          >
+                            <ImageIcon size={16} />
                           </button>
                         </div>
                       </div>
@@ -1160,6 +1282,107 @@ export default function AdminPage() {
                             className="px-4 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
                           >
                             Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {showHtmlEditor && (
+                    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+                      <div className="bg-white text-black rounded-lg p-6 w-full max-w-3xl shadow-xl relative">
+                        <h2 className="text-xl font-bold mb-4">Edit Blog </h2>
+
+                        <textarea
+                          value={htmlContent}
+                          onChange={(e) => setHtmlContent(e.target.value)}
+                          className="w-full h-64 p-3 border border-gray-300 rounded resize-none font-mono text-sm"
+                        />
+
+                        <div className="flex justify-end gap-2 mt-4">
+                          <button
+                            onClick={() => {
+                              setShowHtmlEditor(false);
+                              setHtmlContent("");
+                              setEditingSlug(null);
+                            }}
+                            className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!editingSlug) return;
+                              try {
+                                const res = await fetch(
+                                  `${baseURL}/api/blogs/${editingSlug}`,
+                                  {
+                                    method: "PUT",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      content: htmlContent,
+                                    }),
+                                  }
+                                );
+
+                                if (!res.ok)
+                                  throw new Error("Failed to update content");
+                                alert("Blog updated successfully");
+                                setShowHtmlEditor(false);
+                                setHtmlContent("");
+                                setEditingSlug(null);
+                                fetchBlogs();
+                              } catch (err) {
+                                alert("Failed to save changes");
+                                console.error(err);
+                              }
+                            }}
+                            className="bg-[var(--primary-color)] text-white px-4 py-2 rounded hover:opacity-90"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {showImageModal && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                      <div className="bg-white text-black p-6 rounded-lg shadow-lg w-96">
+                        <h2 className="text-lg font-bold mb-4">
+                          Update Cover Image
+                        </h2>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              setSelectedImage(e.target.files[0]);
+                            }
+                          }}
+                          className="mb-4"
+                        />
+
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => setShowImageModal(false)}
+                            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                            disabled={loading}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleUpdateImage}
+                            className={`px-4 py-2 text-white rounded ${
+                              loading
+                                ? "bg-blue-400"
+                                : "bg-blue-600 hover:bg-blue-700"
+                            }`}
+                            disabled={loading}
+                          >
+                            {loading ? "Updating..." : "Update"}
                           </button>
                         </div>
                       </div>
@@ -1582,8 +1805,8 @@ export default function AdminPage() {
                                     member.status === "Approved"
                                       ? "bg-green-100 text-green-800"
                                       : member.status === "Rejected"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-yellow-100 text-yellow-800"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
                                   }`}
                                 >
                                   {member.status || "Pending"}
@@ -1998,8 +2221,8 @@ export default function AdminPage() {
                                   ? "Updating..."
                                   : "Adding..."
                                 : editingAgm
-                                ? "Update"
-                                : "Create"}
+                                  ? "Update"
+                                  : "Create"}
                             </button>
                           </div>
                         </form>

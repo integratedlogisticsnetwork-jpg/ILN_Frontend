@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 const baseURL = import.meta.env.VITE_API_BASE_URL;
+
+// const API_BASE = "https://bigwigdigitalbackend.onrender.com";
 
 interface BlogPost {
   _id?: string;
@@ -22,14 +26,18 @@ const AddBlog = ({
   existingBlog?: BlogPost | null;
 }) => {
   const [formData, setFormData] = useState({
-    title: existingBlog?.title || "",
-    slug: existingBlog?.slug || "",
-    excerpt: existingBlog?.excerpt || "",
-    content: existingBlog?.content || "",
-    author: existingBlog?.author || "",
-    tags: existingBlog?.tags || "",
+    title: "",
+    slug: "",
+    excerpt: "",
+    content: "",
+    author: "",
+    tags: "",
     coverImage: null as File | null,
+
+    schemaMarkup: [""], // initialize with one field
   });
+
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (existingBlog) {
@@ -39,87 +47,111 @@ const AddBlog = ({
         excerpt: existingBlog.excerpt,
         content: existingBlog.content,
         author: existingBlog.author,
-        tags: existingBlog?.tags || "",
+        tags: existingBlog.tags || "",
         coverImage: null,
+
+        schemaMarkup:
+          (existingBlog as any).schemaMarkup?.length > 0
+            ? (existingBlog as any).schemaMarkup
+            : [""],
       });
     }
   }, [existingBlog]);
+
+  const toolbarOptions = [
+    ["bold", "italic", "underline", "strike"],
+    [{ color: [] }, { background: [] }],
+    ["blockquote"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    [{ align: [] }],
+    ["link"],
+  ];
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
 
-    // Auto-generate slug if the title is changing and the slug hasn't been manually modified
-    if (name === "title") {
+    if (name === "title" && !existingBlog) {
       const autoSlug = value
         .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, "") // remove special chars
+        .replace(/[^a-z0-9\s]/g, "")
         .trim()
-        .replace(/\s+/g, "-"); // replace spaces with -
+        .replace(/\s+/g, "-");
 
       setFormData((prev) => ({
         ...prev,
         title: value,
-        slug: existingBlog ? prev.slug : autoSlug, // don't overwrite if editing
+        slug: autoSlug,
       }));
     } else {
-      setFormData({ ...formData, [name]: value });
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFormData({ ...formData, coverImage: e.target.files[0] });
+    if (e.target.files && e.target.files.length > 0) {
+      setFormData((prev) => ({ ...prev, coverImage: e.target.files![0] }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const blogData = new FormData();
-    blogData.append("title", formData.title);
-    blogData.append("slug", formData.slug);
-    blogData.append("excerpt", formData.excerpt);
-    blogData.append("content", formData.content);
-    blogData.append("author", formData.author);
-    blogData.append("tags", formData.tags);
-    if (formData.coverImage) blogData.append("coverImage", formData.coverImage);
+    setSubmitting(true);
 
     try {
-      const method = existingBlog ? "PUT" : "POST";
-      const endpoint = existingBlog
-        ? `${baseURL}/api/blogs/${existingBlog.slug}`
-        : `${baseURL}/api/blogs/add`;
-
-      const res = await fetch(endpoint, {
-        method,
-        body: blogData,
+      const blogData = new FormData();
+      blogData.append("title", formData.title);
+      blogData.append("slug", formData.slug);
+      blogData.append("excerpt", formData.excerpt);
+      blogData.append("content", formData.content);
+      blogData.append("author", formData.author);
+      blogData.append("tags", formData.tags);
+      if (formData.coverImage) {
+        blogData.append("coverImage", formData.coverImage);
+      }
+      formData.schemaMarkup.forEach((schema) => {
+        blogData.append("schemaMarkup", schema);
       });
+
+      const res = await fetch(
+        existingBlog
+          ? `${baseURL}/api/blogs/${existingBlog.slug}`
+          : `${baseURL}/api/blogs/add`,
+        {
+          method: existingBlog ? "PUT" : "POST",
+          body: blogData,
+        }
+      );
 
       const data = await res.json();
       if (res.ok) {
-        alert(
-          existingBlog ? "Blog updated successfully" : "Blog added successfully"
-        );
+        alert(existingBlog ? "Blog updated" : "Blog added");
         onSuccess();
         onClose();
       } else {
-        alert(
-          data.error || `Failed to ${existingBlog ? "update" : "add"} blog`
-        );
+        alert(data.error || "Something went wrong");
       }
     } catch (err) {
-      alert(`Error ${existingBlog ? "updating" : "adding"} blog`);
+      alert("Network or server error");
+      console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999]">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
       <div className="bg-white text-black p-6 w-full max-w-2xl rounded-xl overflow-y-auto max-h-[90vh]">
-        <h2 className="text-2xl font-bold mb-4">
+        <h2 className="text-2xl font-bold mb-4 text-black">
           {existingBlog ? "Edit Blog" : "Add New Blog"}
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          encType="multipart/form-data"
+        >
           <input
             type="text"
             name="title"
@@ -141,20 +173,28 @@ const AddBlog = ({
           <input
             type="text"
             name="excerpt"
-            placeholder="Excerpt"
+            placeholder="Meta description"
             className="w-full p-2 border"
             value={formData.excerpt}
             onChange={handleChange}
             required
           />
-          <textarea
-            name="content"
-            placeholder="Content"
-            className="w-full p-2 border h-32"
-            value={formData.content}
-            onChange={handleChange}
-            required
-          />
+
+          <div>
+            <label className="block font-medium mb-2">Blog Content</label>
+            <div className="border rounded overflow-hidden">
+              <ReactQuill
+                theme="snow"
+                value={formData.content}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, content: value }))
+                }
+                modules={{ toolbar: toolbarOptions }}
+                className="react-quill-editor"
+              />
+            </div>
+          </div>
+
           <input
             type="text"
             name="author"
@@ -172,16 +212,61 @@ const AddBlog = ({
             value={formData.tags}
             onChange={handleChange}
           />
-          <label className="block mb-2 font-medium">
-            Upload Image (JPG, JPEG, or PNG only)
-          </label>
           <input
             type="file"
-            accept="image/png, image/jpeg, image/jpg"
+            accept="image/*"
             className="w-full"
             onChange={handleImageChange}
             required={!existingBlog}
           />
+          <div>
+            <label className="block font-medium mb-2">
+              Schema Markup (JSON-LD)
+            </label>
+            {formData.schemaMarkup.map((markup, index) => (
+              <textarea
+                key={index}
+                value={markup}
+                onChange={(e) => {
+                  const updated = [...formData.schemaMarkup];
+                  updated[index] = e.target.value;
+                  setFormData((prev) => ({ ...prev, schemaMarkup: updated }));
+                }}
+                placeholder={`Schema Markup ${index + 1}`}
+                rows={3}
+                className="w-full p-2 border mb-2"
+              />
+            ))}
+            <div className="flex gap-4">
+              <button
+                type="button"
+                className="px-3 py-1 bg-green-600 text-white rounded"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    schemaMarkup: [...prev.schemaMarkup, ""],
+                  }))
+                }
+              >
+                + Add Schema
+              </button>
+              {formData.schemaMarkup.length > 1 && (
+                <button
+                  type="button"
+                  className="px-3 py-1 bg-red-500 text-white rounded"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      schemaMarkup: prev.schemaMarkup.slice(0, -1),
+                    }))
+                  }
+                >
+                  – Remove Last
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-4">
             <button
               type="button"
@@ -192,9 +277,20 @@ const AddBlog = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[var(--primary-color)] text-white rounded"
+              className={`px-4 py-2 text-white rounded ${
+                submitting
+                  ? "bg-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+              disabled={submitting}
             >
-              {existingBlog ? "Update" : "Submit"}
+              {submitting
+                ? existingBlog
+                  ? "Updating..."
+                  : "Adding..."
+                : existingBlog
+                  ? "Update"
+                  : "Submit"}
             </button>
           </div>
         </form>
