@@ -34,3 +34,24 @@
   writing-mode: vertical-lr;
   text-orientation: mixed;
 }
+
+.react-quill-editor {
+  height: 300px; /* or whatever you prefer */
+  display: flex;
+  flex-direction: column;
+}
+
+.react-quill-editor .ql-toolbar {
+  flex-shrink: 0;
+}
+
+.react-quill-editor .ql-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Make header dropdown scrollable */
+.ql-picker.ql-header .ql-picker-options {
+  max-height: 250px !important; /* adjust as needed */
+  overflow-y: auto !important;
+}
