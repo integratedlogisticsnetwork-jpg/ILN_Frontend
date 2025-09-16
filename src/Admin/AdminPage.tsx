@@ -1659,8 +1659,12 @@ export default function AdminPage() {
                             {contacts.map((contact: any) => (
                               <tr key={contact._id} className="border-t">
                                 <td className="py-2 px-2">{contact.name}</td>
-                                <td className="py-2 px-2">{contact.email}</td>
-                                <td className="py-2 px-2">{contact.subject}</td>
+                                <td className="py-2 px-2 truncate">
+                                  {contact.email}
+                                </td>
+                                <td className="py-2 px-2 truncate">
+                                  {contact.subject}
+                                </td>
                                 <td className="py-2 px-2 truncate">
                                   {contact.message}
                                 </td>
