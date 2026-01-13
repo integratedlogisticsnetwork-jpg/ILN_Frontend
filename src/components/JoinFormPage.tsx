@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 // import logo1 from "../assets/ILN Logo v2.png";
 import Swal from "sweetalert2";
 import Navbar from "./Navbar";
@@ -76,6 +76,8 @@ const JoinFormPage = () => {
   const [formData, setFormData] = useState({
     companyName: "",
     legalStructure: "",
+    taxId: "",
+    yearsInBusiness: "",
     establishmentDate: "",
     building: "",
     street: "",
@@ -94,6 +96,13 @@ const JoinFormPage = () => {
     website: "",
   });
 
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  const [tradeReferences, setTradeReferences] = useState([
+    { name: "", designation: "", email: "", phone: "" },
+    { name: "", designation: "", email: "", phone: "" },
+    { name: "", designation: "", email: "", phone: "" },
+  ]);
   const [loading, setLoading] = useState(false);
   const [_errorMsg, setErrorMsg] = useState("");
 
@@ -115,11 +124,37 @@ const JoinFormPage = () => {
     // Allow only numbers in phone fields
     const phoneFields = ["telephone", "primaryContactPhone"];
     if (phoneFields.includes(name)) {
-      const filteredValue = value.replace(/[^\d]/g, ""); // remove anything that's not a digit
+      const filteredValue = value.replace(/[^\d]/g, "");
       setFormData((prev) => ({ ...prev, [name]: filteredValue }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      return;
     }
+
+    // Allow only numbers in yearsInBusiness
+    if (name === "yearsInBusiness") {
+      const filteredValue = value.replace(/[^\d]/g, "");
+      setFormData((prev) => ({ ...prev, [name]: filteredValue }));
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleTradeRefChange = (
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    setTradeReferences((prev) => {
+      const updated = [...prev];
+
+      // allow only digits in trade ref phone
+      if (field === "phone") {
+        value = value.replace(/[^\d]/g, "");
+      }
+
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,6 +181,10 @@ const JoinFormPage = () => {
       });
       formPayload.append("businessVerticals", JSON.stringify(verticals));
       formPayload.append("logo", logo);
+      formPayload.append("taxId", formData.taxId);
+      formPayload.append("yearsInBusiness", formData.yearsInBusiness);
+      formPayload.append("tradeReferences", JSON.stringify(tradeReferences));
+      formPayload.append("termsAccepted", String(termsAccepted));
 
       const response = await fetch(`${baseURL}/api/members`, {
         method: "POST",
@@ -158,6 +197,8 @@ const JoinFormPage = () => {
         setFormData({
           companyName: "",
           legalStructure: "",
+          taxId: "",
+          yearsInBusiness: "",
           establishmentDate: "",
           building: "",
           street: "",
@@ -237,6 +278,20 @@ const JoinFormPage = () => {
               value={formData.legalStructure}
               onChange={handleChange}
               required
+            />
+            <InputField
+              label="Applicant's Tax ID"
+              name="taxId"
+              value={formData.taxId}
+              onChange={handleChange}
+            />
+
+            <InputField
+              label="Years in Business"
+              name="yearsInBusiness"
+              value={formData.yearsInBusiness}
+              onChange={handleChange}
+              type="text"
             />
             <InputField
               label="Date of Establishment *"
@@ -378,6 +433,72 @@ const JoinFormPage = () => {
             </div>
           </fieldset>
 
+          <fieldset className="border border-gray-300 dark:border-gray-700 rounded-xl p-6">
+            <legend className="px-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Trade References (Global) *
+            </legend>
+
+            <div className="flex flex-col gap-8 mt-4">
+              {tradeReferences.map((ref, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 p-4"
+                >
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    Reference {index + 1}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InputField
+                      label="Name *"
+                      name={`tradeRefName-${index}`}
+                      value={ref.name}
+                      onChange={(e: any) =>
+                        handleTradeRefChange(index, "name", e.target.value)
+                      }
+                      required
+                    />
+
+                    <InputField
+                      label="Designation (Management) *"
+                      name={`tradeRefDesignation-${index}`}
+                      value={ref.designation}
+                      onChange={(e: any) =>
+                        handleTradeRefChange(
+                          index,
+                          "designation",
+                          e.target.value
+                        )
+                      }
+                      required
+                    />
+
+                    <InputField
+                      label="Email *"
+                      type="email"
+                      name={`tradeRefEmail-${index}`}
+                      value={ref.email}
+                      onChange={(e: any) =>
+                        handleTradeRefChange(index, "email", e.target.value)
+                      }
+                      required
+                    />
+
+                    <InputField
+                      label="Direct Phone / Mobile *"
+                      name={`tradeRefPhone-${index}`}
+                      value={ref.phone}
+                      onChange={(e: any) =>
+                        handleTradeRefChange(index, "phone", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </fieldset>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Company Profile Logo *
@@ -389,6 +510,29 @@ const JoinFormPage = () => {
               required
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] transition file:text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[var(--primary-color)] file:text-white hover:file:brightness-110"
             />
+          </div>
+
+          <div className="border border-gray-300 dark:border-gray-700 rounded-xl p-5">
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              By submitting this form, you acknowledge that ILN Management will
+              conduct a formal due diligence review, which ensures the security
+              and financial integrity of our global membership. You will receive
+              a personal notification regarding the status of your application
+              once this review is completed.
+            </p>
+
+            <label className="mt-4 flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--primary-color)]"
+                required
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                I acknowledge and agree to the due diligence review process.
+              </span>
+            </label>
           </div>
 
           <button
