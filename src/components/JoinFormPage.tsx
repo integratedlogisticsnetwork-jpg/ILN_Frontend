@@ -118,8 +118,20 @@ const JoinFormPage = () => {
     "Oil & Gas and Renewable Energy",
   ];
 
+  const countWords = (text: string) => {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    if (name === "companyProfile") {
+      const words = countWords(value);
+      if (words <= 500) {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
+      return;
+    }
 
     // Allow only numbers in phone fields
     const phoneFields = ["telephone", "primaryContactPhone"];
@@ -401,6 +413,9 @@ const JoinFormPage = () => {
             rows={4}
             required
           />
+          <p className="text-sm text-right text-gray-500 dark:text-gray-400">
+            {countWords(formData.companyProfile)} / 500
+          </p>
 
           <fieldset className="border border-gray-300 dark:border-gray-700 rounded-xl p-6">
             <legend className="px-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
