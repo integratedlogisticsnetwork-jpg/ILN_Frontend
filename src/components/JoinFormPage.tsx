@@ -181,8 +181,6 @@ const JoinFormPage = () => {
       });
       formPayload.append("businessVerticals", JSON.stringify(verticals));
       formPayload.append("logo", logo);
-      formPayload.append("taxId", formData.taxId);
-      formPayload.append("yearsInBusiness", formData.yearsInBusiness);
       formPayload.append("tradeReferences", JSON.stringify(tradeReferences));
       formPayload.append("termsAccepted", String(termsAccepted));
 
@@ -218,6 +216,14 @@ const JoinFormPage = () => {
         });
         setVerticals([]);
         setLogo(null);
+        setTradeReferences([
+          { name: "", designation: "", email: "", phone: "" },
+          { name: "", designation: "", email: "", phone: "" },
+          { name: "", designation: "", email: "", phone: "" },
+        ]);
+
+        setTermsAccepted(false);
+
         setLoading(false);
 
         Swal.fire({
