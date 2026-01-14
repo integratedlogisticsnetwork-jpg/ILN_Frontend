@@ -116,7 +116,18 @@ export default function AdminPage() {
     content: string; // ✅ Add this line
   }
 
+  interface TradeReference {
+    name: string;
+    designation: string;
+    email: string;
+    phone: string;
+  }
+
   interface Member {
+    tradeReferences: TradeReference[];
+    yearsInBusiness: number;
+    taxId: string;
+
     _id: string;
     companyName: string;
     logoUrl: string;
@@ -1861,6 +1872,16 @@ export default function AdminPage() {
                         {selectedMember.legalStructure}
                       </p>
                       <p>
+                        <strong>Applicant Tax ID:</strong>{" "}
+                        {selectedMember.taxId || "—"}
+                      </p>
+
+                      <p>
+                        <strong>Years in Business:</strong>{" "}
+                        {selectedMember.yearsInBusiness ?? "—"}
+                      </p>
+
+                      <p>
                         <strong>Date of Establishment:</strong>{" "}
                         {selectedMember.establishmentDate}
                       </p>
@@ -1908,6 +1929,50 @@ export default function AdminPage() {
                         {selectedMember.designation}
                       </p>
                     </div>
+                    {/* ✅ Trade References */}
+                    {selectedMember.tradeReferences &&
+                    selectedMember.tradeReferences.length > 0 ? (
+                      <div className="mt-6">
+                        <h4 className="text-lg font-semibold text-[var(--primary-color)] mb-3">
+                          Trade References (Global)
+                        </h4>
+
+                        <div className="space-y-4">
+                          {selectedMember.tradeReferences.map(
+                            (ref: any, index: number) => (
+                              <div
+                                key={index}
+                                className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 text-sm"
+                              >
+                                <p className="font-semibold mb-2">
+                                  Reference {index + 1}
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <p>
+                                    <strong>Name:</strong> {ref.name || "—"}
+                                  </p>
+                                  <p>
+                                    <strong>Designation:</strong>{" "}
+                                    {ref.designation || "—"}
+                                  </p>
+                                  <p>
+                                    <strong>Email:</strong> {ref.email || "—"}
+                                  </p>
+                                  <p>
+                                    <strong>Phone:</strong> {ref.phone || "—"}
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-6 text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Trade References:</strong> —
+                      </div>
+                    )}
 
                     <div className="mt-6 flex justify-end gap-3">
                       <button
