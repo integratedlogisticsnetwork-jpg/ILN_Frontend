@@ -15,23 +15,24 @@ function Newsfeed() {
         const rssUrl =
           "https://www.supplychainbrain.com/rss/topic/1135-logistics";
 
-        // AllOrigins proxy (CORS bypass)
+        // ✅ AllOrigins proxy (CORS bypass)
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(
           rssUrl
         )}`;
 
         const res = await axios.get(proxyUrl);
 
-        // XML string
         const xmlString = res.data.contents;
 
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlString, "text/xml");
 
         const items = Array.from(xml.querySelectorAll("item")).map((item) => {
-          const title = item.querySelector("title")?.textContent || "";
-          const link = item.querySelector("link")?.textContent || "";
-          const pubDate = item.querySelector("pubDate")?.textContent || "";
+          const title = (item.querySelector("title")?.textContent || "").trim();
+          const link = (item.querySelector("link")?.textContent || "").trim();
+          const pubDate = (
+            item.querySelector("pubDate")?.textContent || ""
+          ).trim();
 
           return {
             title,
@@ -48,25 +49,56 @@ function Newsfeed() {
 
     fetchNewsfeed();
   }, []);
+
+  // ✅ Format Date function
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
 
     const d = new Date(dateString);
 
     if (isNaN(d.getTime())) {
-      // fallback: show raw RSS date
-      return dateString;
+      return dateString; // fallback raw date
     }
 
     return d.toLocaleDateString();
   };
 
+  // ✅ Pagination calculations
   const totalPages = Math.ceil(articles.length / articlesPerPage);
 
   const currentArticles = articles.slice(
     (currentPage - 1) * articlesPerPage,
     currentPage * articlesPerPage
   );
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const visiblePages = 2;
+
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= visiblePages + 1) {
+        for (let i = 1; i <= visiblePages + 2; i++) pages.push(i);
+        pages.push("...", totalPages);
+      } else if (currentPage >= totalPages - visiblePages) {
+        pages.push(1, "...");
+        for (let i = totalPages - (visiblePages + 1); i <= totalPages; i++)
+          pages.push(i);
+      } else {
+        pages.push(1, "...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push("...", totalPages);
+      }
+    }
+
+    return pages;
+  };
+
+  // ✅ Scroll to top on page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   return (
     <div className="dark:bg-[var(--secondary-color)]">
@@ -113,7 +145,29 @@ function Newsfeed() {
               ))}
             </ul>
 
-            {/* Pagination buttons (same as your code) */}
+            {/* Pagination */}
+            <div className="mt-10 flex justify-center gap-2 flex-wrap">
+              {getPageNumbers().map((page, index) => (
+                <button
+                  key={index}
+                  onClick={() =>
+                    typeof page === "number" && setCurrentPage(page)
+                  }
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition ${
+                    page === currentPage
+                      ? "bg-[var(--primary-color)] text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+                  } ${
+                    page === "..."
+                      ? "cursor-default"
+                      : "hover:bg-[var(--primary-color-light)] dark:hover:bg-gray-600"
+                  }`}
+                  disabled={page === "..."}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
           </>
         )}
       </div>
