@@ -1,75 +1,172 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import newsfeed from "../assets/newsfeed.jpeg";
 
+type Article = {
+  title: string;
+  link: string;
+  date: string;
+  source: string;
+};
+
 function Newsfeed() {
-  const [articles, setArticles] = useState<any[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true); // ✅ Loader State
   const articlesPerPage = 15;
 
-  useEffect(() => {
-    const fetchNewsfeed = async () => {
-      try {
-        const rssUrl =
-          "https://www.supplychainbrain.com/rss/topic/1135-logistics";
-
-        // ✅ AllOrigins proxy (CORS bypass)
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(
-          rssUrl
-        )}`;
-
-        const res = await axios.get(proxyUrl);
-
-        const xmlString = res.data.contents;
-
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlString, "text/xml");
-
-        const items = Array.from(xml.querySelectorAll("item")).map((item) => {
-          const title = (item.querySelector("title")?.textContent || "").trim();
-          const link = (item.querySelector("link")?.textContent || "").trim();
-          const pubDate = (
-            item.querySelector("pubDate")?.textContent || ""
-          ).trim();
-
-          return {
-            title,
-            link,
-            date: pubDate,
-          };
-        });
-
-        setArticles(items);
-      } catch (err) {
-        console.error("Failed to fetch RSS newsfeed", err);
-      }
-    };
-
-    fetchNewsfeed();
-  }, []);
-
-  // ✅ Format Date function
+  // ✅ Safe Date Formatter
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
-
     const d = new Date(dateString);
-
-    if (isNaN(d.getTime())) {
-      return dateString; // fallback raw date
-    }
-
+    if (isNaN(d.getTime())) return dateString;
     return d.toLocaleDateString();
   };
 
-  // ✅ Pagination calculations
+  // ✅ Convert date to timestamp for sorting
+  const getDateTime = (dateString: string) => {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return 0;
+    return d.getTime();
+  };
+
+  // ✅ Parse RSS XML -> Articles
+  const parseRSSXml = (xmlString: string, sourceName: string): Article[] => {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlString, "text/xml");
+
+    const items = Array.from(xml.querySelectorAll("item")).map((item) => {
+      const title = (item.querySelector("title")?.textContent || "").trim();
+      const link = (item.querySelector("link")?.textContent || "").trim();
+
+      const pubDate =
+        (item.querySelector("pubDate")?.textContent || "").trim() ||
+        (item.querySelector("dc\\:date")?.textContent || "").trim();
+
+      return {
+        title,
+        link,
+        date: pubDate,
+        source: sourceName,
+      } as Article;
+    });
+
+    return items;
+  };
+
+  // ✅ Try Fetch RSS using AllOrigins RAW
+  const fetchWithAllOrigins = async (rssUrl: string, sourceName: string) => {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
+      rssUrl
+    )}`;
+
+    const res = await axios.get(proxyUrl, {
+      timeout: 15000,
+    });
+
+    return parseRSSXml(res.data, sourceName);
+  };
+
+  // ✅ Fallback fetch using rss2json
+  const fetchWithRss2Json = async (rssUrl: string, sourceName: string) => {
+    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(
+      rssUrl
+    )}`;
+
+    const res = await axios.get(apiUrl, {
+      timeout: 15000,
+    });
+
+    const items = res.data?.items || [];
+
+    return items.map((item: any) => ({
+      title: item.title || "",
+      link: item.link || "",
+      date: item.pubDate || item.isoDate || "",
+      source: sourceName,
+    })) as Article[];
+  };
+
+  // ✅ Main fetch (with fallback)
+  const fetchRssFeed = async (rssUrl: string, sourceName: string) => {
+    try {
+      return await fetchWithAllOrigins(rssUrl, sourceName);
+    } catch (err) {
+      console.warn(
+        `AllOrigins failed for ${sourceName}, trying rss2json...`,
+        err
+      );
+      return await fetchWithRss2Json(rssUrl, sourceName);
+    }
+  };
+
+  useEffect(() => {
+    const fetchAllFeeds = async () => {
+      setLoading(true); // ✅ Start Loader
+
+      try {
+        const supplyChainBrainUrl =
+          "https://www.supplychainbrain.com/rss/topic/1135-logistics";
+
+        const gCaptainUrl = "https://gcaptain.com/category/shipping/feed/";
+
+        const rssAppUrl = "https://rss.app/feeds/N86ZBTYMNoSKJ0HM.xml";
+
+        const cargoFactsUrl = "https://cargofacts.com/feed/";
+
+        const aviationWeekUrl = "https://rss.app/feeds/FS4eKFgk7TOF3LjK.xml";
+
+        const results = await Promise.allSettled([
+          fetchRssFeed(supplyChainBrainUrl, "SupplyChainBrain"),
+          fetchRssFeed(gCaptainUrl, "gCaptain"),
+          fetchRssFeed(rssAppUrl, "rss.app"),
+          fetchRssFeed(cargoFactsUrl, "CargoFacts"),
+          fetchRssFeed(aviationWeekUrl, "AviationWeek"),
+        ]);
+
+        const merged: Article[] = [];
+
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            merged.push(...result.value);
+          } else {
+            console.error("One RSS feed failed:", result.reason);
+          }
+        });
+
+        // ✅ Remove duplicates by link
+        const unique = new Map<string, Article>();
+        merged.forEach((item) => {
+          if (item.link) unique.set(item.link, item);
+        });
+
+        const finalList = Array.from(unique.values());
+
+        // ✅ Sort latest first
+        finalList.sort((a, b) => getDateTime(b.date) - getDateTime(a.date));
+
+        setArticles(finalList);
+      } catch (error) {
+        console.error("Failed to fetch feeds", error);
+      } finally {
+        setLoading(false); // ✅ Stop Loader
+      }
+    };
+
+    fetchAllFeeds();
+  }, []);
+
+  // ✅ Pagination
   const totalPages = Math.ceil(articles.length / articlesPerPage);
 
-  const currentArticles = articles.slice(
-    (currentPage - 1) * articlesPerPage,
-    currentPage * articlesPerPage
-  );
+  const currentArticles = useMemo(() => {
+    return articles.slice(
+      (currentPage - 1) * articlesPerPage,
+      currentPage * articlesPerPage
+    );
+  }, [articles, currentPage]);
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
@@ -83,8 +180,9 @@ function Newsfeed() {
         pages.push("...", totalPages);
       } else if (currentPage >= totalPages - visiblePages) {
         pages.push(1, "...");
-        for (let i = totalPages - (visiblePages + 1); i <= totalPages; i++)
+        for (let i = totalPages - (visiblePages + 1); i <= totalPages; i++) {
           pages.push(i);
+        }
       } else {
         pages.push(1, "...");
         for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
@@ -120,7 +218,13 @@ function Newsfeed() {
 
       {/* News List */}
       <div className="max-w-5xl mx-auto py-10 px-4">
-        {articles.length === 0 ? (
+        {loading ? (
+          // ✅ Loader UI
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-12 h-12 border-4 border-gray-300 border-t-[var(--primary-color)] rounded-full animate-spin"></div>
+            <p className="mt-4 text-gray-500 text-sm">Loading news...</p>
+          </div>
+        ) : articles.length === 0 ? (
           <p className="text-center text-gray-500">
             No news available at the moment.
           </p>
@@ -138,9 +242,15 @@ function Newsfeed() {
                     {article.title}
                   </a>
 
-                  <p className="text-gray-500 text-sm">
-                    {formatDate(article.date)}
-                  </p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-gray-500 text-sm">
+                      {formatDate(article.date)}
+                    </p>
+
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                      {article.source}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>
