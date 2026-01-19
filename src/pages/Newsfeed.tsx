@@ -15,7 +15,10 @@ function Newsfeed() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true); // ✅ Loader State
+
   const articlesPerPage = 15;
+  const maxPages = 3; // ✅ Client wants only 3 pagination pages
+  const maxArticles = articlesPerPage * maxPages; // ✅ 15 * 3 = 45 articles max
 
   // ✅ Safe Date Formatter
   const formatDate = (dateString: string) => {
@@ -59,7 +62,7 @@ function Newsfeed() {
   // ✅ Try Fetch RSS using AllOrigins RAW
   const fetchWithAllOrigins = async (rssUrl: string, sourceName: string) => {
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
-      rssUrl
+      rssUrl,
     )}`;
 
     const res = await axios.get(proxyUrl, {
@@ -72,7 +75,7 @@ function Newsfeed() {
   // ✅ Fallback fetch using rss2json
   const fetchWithRss2Json = async (rssUrl: string, sourceName: string) => {
     const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(
-      rssUrl
+      rssUrl,
     )}`;
 
     const res = await axios.get(apiUrl, {
@@ -96,7 +99,7 @@ function Newsfeed() {
     } catch (err) {
       console.warn(
         `AllOrigins failed for ${sourceName}, trying rss2json...`,
-        err
+        err,
       );
       return await fetchWithRss2Json(rssUrl, sourceName);
     }
@@ -104,7 +107,7 @@ function Newsfeed() {
 
   useEffect(() => {
     const fetchAllFeeds = async () => {
-      setLoading(true); // ✅ Start Loader
+      setLoading(true);
 
       try {
         const supplyChainBrainUrl =
@@ -116,6 +119,7 @@ function Newsfeed() {
 
         const cargoFactsUrl = "https://cargofacts.com/feed/";
 
+        // ✅ AviationWeek (rss.app working feed you gave)
         const aviationWeekUrl = "https://rss.app/feeds/FS4eKFgk7TOF3LjK.xml";
 
         const results = await Promise.allSettled([
@@ -147,47 +151,38 @@ function Newsfeed() {
         // ✅ Sort latest first
         finalList.sort((a, b) => getDateTime(b.date) - getDateTime(a.date));
 
-        setArticles(finalList);
+        // ✅ LIMIT TO ONLY 3 PAGINATION PAGES (MAX 45 ARTICLES)
+        const limitedList = finalList.slice(0, maxArticles);
+
+        setArticles(limitedList);
+        setCurrentPage(1);
       } catch (error) {
         console.error("Failed to fetch feeds", error);
       } finally {
-        setLoading(false); // ✅ Stop Loader
+        setLoading(false);
       }
     };
 
     fetchAllFeeds();
   }, []);
 
-  // ✅ Pagination
+  // ✅ Pagination calculation
   const totalPages = Math.ceil(articles.length / articlesPerPage);
 
   const currentArticles = useMemo(() => {
     return articles.slice(
       (currentPage - 1) * articlesPerPage,
-      currentPage * articlesPerPage
+      currentPage * articlesPerPage,
     );
   }, [articles, currentPage]);
 
+  // ✅ Only show page numbers upto 3
   const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    const visiblePages = 2;
+    const pages: number[] = [];
+    const total = Math.min(totalPages, maxPages);
 
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      if (currentPage <= visiblePages + 1) {
-        for (let i = 1; i <= visiblePages + 2; i++) pages.push(i);
-        pages.push("...", totalPages);
-      } else if (currentPage >= totalPages - visiblePages) {
-        pages.push(1, "...");
-        for (let i = totalPages - (visiblePages + 1); i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1, "...");
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-        pages.push("...", totalPages);
-      }
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
     }
 
     return pages;
@@ -255,24 +250,17 @@ function Newsfeed() {
               ))}
             </ul>
 
-            {/* Pagination */}
+            {/* ✅ Pagination (Only 3 pages max) */}
             <div className="mt-10 flex justify-center gap-2 flex-wrap">
-              {getPageNumbers().map((page, index) => (
+              {getPageNumbers().map((page) => (
                 <button
-                  key={index}
-                  onClick={() =>
-                    typeof page === "number" && setCurrentPage(page)
-                  }
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
                   className={`px-3 py-1 rounded-md text-sm font-medium transition ${
                     page === currentPage
                       ? "bg-[var(--primary-color)] text-white"
                       : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
-                  } ${
-                    page === "..."
-                      ? "cursor-default"
-                      : "hover:bg-[var(--primary-color-light)] dark:hover:bg-gray-600"
-                  }`}
-                  disabled={page === "..."}
+                  } hover:bg-[var(--primary-color-light)] dark:hover:bg-gray-600`}
                 >
                   {page}
                 </button>
