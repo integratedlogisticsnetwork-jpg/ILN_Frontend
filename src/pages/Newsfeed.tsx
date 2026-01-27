@@ -115,17 +115,17 @@ function Newsfeed() {
 
         const gCaptainUrl = "https://gcaptain.com/category/shipping/feed/";
 
-        const rssAppUrl = "https://rss.app/feeds/N86ZBTYMNoSKJ0HM.xml";
-
+        const loadstarUrl = "https://theloadstar.com/feed/";
         const cargoFactsUrl = "https://cargofacts.com/feed/";
 
         // ✅ AviationWeek (rss.app working feed you gave)
-        const aviationWeekUrl = "https://rss.app/feeds/FS4eKFgk7TOF3LjK.xml";
+        const aviationWeekUrl =
+          "https://aviationweek.com/awn/rss-feed-by-content-source";
 
         const results = await Promise.allSettled([
           fetchRssFeed(supplyChainBrainUrl, "SupplyChainBrain"),
           fetchRssFeed(gCaptainUrl, "gCaptain"),
-          fetchRssFeed(rssAppUrl, "rss.app"),
+          fetchRssFeed(loadstarUrl, "The Loadstar"),
           fetchRssFeed(cargoFactsUrl, "CargoFacts"),
           fetchRssFeed(aviationWeekUrl, "AviationWeek"),
         ]);
